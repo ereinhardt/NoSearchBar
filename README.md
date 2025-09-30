@@ -1,4 +1,4 @@
-# NoSearchBar
+# NoSearchBar (manifest-v.3.0)
 
 Remove SearchBars from the Internet.
 
