@@ -1,6 +1,7 @@
 # NoSearchBar (manifest-v.3.0)
 
-Remove SearchBars from the Internet.
+by Erik Anton Reinhardt, Finn Jakob Reinhardt.<br>
+[MIT License]
 
-
-A Chrome extension, which removes the SearchBar on every website + search engines like google.com. Changes the search provider to disable the search in the URL address bar.
+"NoSearchBar" is a browser extension that removes the searchbar from the (Chromium-based) browser and every website:
+https://chromewebstore.google.com/detail/nosearchbar/fjjlanpalmagenpageablaphkfcchado?hl=de&utm_source=ext_sidebar
