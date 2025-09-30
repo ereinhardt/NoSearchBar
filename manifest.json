@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "NoSearchBar",
-  "version": "2.0",
+  "version": "3.0",
   "description": "Remove SearchBars from the Internet.",
   "author": {
     "name": "Erik Anton Reinhardt",
