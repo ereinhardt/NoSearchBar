@@ -11,4 +11,5 @@ by Erik Anton Reinhardt, Finn Jakob Reinhardt.<br>
 https://chromewebstore.google.com/detail/nosearchbar/fjjlanpalmagenpageablaphkfcchado?hl=de&utm_source=ext_sidebar
 
 ## Known Bugs (TODO):
+
 –No Bugs know–
