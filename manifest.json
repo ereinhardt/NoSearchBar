@@ -5,14 +5,14 @@
   "description": "Remove SearchBars from the Internet.",
   "author": {
     "name": "Erik Anton Reinhardt",
-    "url": "https://ereinhardt.net"
+    "url": "https://ereinhardt.org"
   },
   "icons": {
-    "48": "./images/icon.png"
+    "48": "images/icon.png"
   },
   "content_scripts": [{
     "matches": ["<all_urls>"],
-    "js": ["./script.js", "opencv.js"],
+    "js": ["script.js"],
     "run_at": "document_start"
   }],
   "content_security_policy": {
@@ -28,9 +28,9 @@
     "search_provider": {
       "name": "NoSearchBar",
       "keyword": "*",
-      "suggest_url": "https://ereinhardt.net",
-      "search_url": "https://ereinhardt.net",
-      "favicon_url": "https://ereinhardt.net/favicon.ico",
+      "suggest_url": "https://ereinhardt.org",
+      "search_url": "https://ereinhardt.org",
+      "favicon_url": "https://ereinhardt.org/favicon.ico",
       "encoding": "UTF-8",
       "is_default": true
     }

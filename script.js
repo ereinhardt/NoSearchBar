@@ -87,8 +87,55 @@ const languages = {
   vi: "Tìm kiếm",
   cy: "chwilio",
 };
+// Site-specific selectors can be updated here if websites change their DOM.
+const SITE_SELECTORS = {
+  google: {
+    homepageSearch: 'div[jscontroller="cnjECf"].A8SBwf, *[jsname="RNNXgb"]',
+    earthSearch: "#search",
+  },
+  youtube: {
+    searchBox: "yt-searchbox, ytd-searchbox",
+    voiceSearchButton: "#voice-search-button",
+    paperInput: "tp-yt-paper-input",
+  },
+  apple: {
+    navSearch: "#globalnav-menubutton-link-search, #ac-gn-link-search",
+  },
+  instagram: {
+    searchButton: "._aawf",
+  },
+  ebay: {
+    searchBar: "form#gh-f.gh-search, .gh-td-s",
+  },
+  amazon: {
+    searchBar: "#nav-search",
+  },
+};
+
+function hideFirst(selector) {
+  var element = document.querySelector(selector);
+  if (element) {
+    element.style.display = "none";
+  }
+}
+
+function removeFirst(selector) {
+  var element = document.querySelector(selector);
+  if (element && element.parentNode) {
+    element.parentNode.removeChild(element);
+  }
+}
+
+function hideKnownSiteSelectors() {
+  for (var site in SITE_SELECTORS) {
+    for (var selector in SITE_SELECTORS[site]) {
+      hideFirst(SITE_SELECTORS[site][selector]);
+    }
+  }
+}
 // Analyzes the website URL and decides which search function to use
 function getURL() {
+  hideKnownSiteSelectors();
   var getURL = window.location.href;
   var host = window.location.hostname;
   if (
@@ -105,43 +152,35 @@ function getURL() {
         noSearchBar();
       }
     } else {
-      if (document.querySelectorAll("*[jsname=RNNXgb]").length > 0) {
-        document.querySelectorAll("*[jsname=RNNXgb]")[0].style.display = "none";
-      }
+      hideFirst(SITE_SELECTORS.google.homepageSearch);
     }
   } else if (getURL.toUpperCase().includes("YOUTUBE")) {
-    document.getElementsByTagName("ytd-searchbox")[0].style.display = "none";
-    document.getElementById("voice-search-button").style.display = "none";
-
-    if (document.getElementsByTagName("tp-yt-paper-input")[0]) {
-      document.getElementsByTagName("tp-yt-paper-input")[0].style.display =
-        "none";
-    }
+    hideFirst(SITE_SELECTORS.youtube.searchBox);
+    hideFirst(SITE_SELECTORS.youtube.voiceSearchButton);
+    hideFirst(SITE_SELECTORS.youtube.paperInput);
   } else if (
     getURL.toUpperCase().includes("APPLE") &&
     getURL.toUpperCase().includes("SEARCH") == false
   ) {
-    document.querySelectorAll("#ac-gn-link-search")[0].style.display = "none";
+    hideFirst(SITE_SELECTORS.apple.navSearch);
   } else if (getURL.toUpperCase().includes("INSTAGRAM")) {
-    const parent = document.querySelectorAll("._aawf")[0].parentNode;
-    const child = document.querySelectorAll("._aawf")[0];
-    parent.removeChild(child);
+    removeFirst(SITE_SELECTORS.instagram.searchButton);
   } else if (
     getURL.toUpperCase().includes("EBAY") &&
     getURL.toUpperCase().includes("KLEIN") == false
   ) {
-    document.getElementsByClassName("gh-td-s")[0].style.display = "none";
+    hideFirst(SITE_SELECTORS.ebay.searchBar);
   } else if (
     getURL.toUpperCase().includes("AMAZON") &&
     getURL.toUpperCase().includes("S?K")
   ) {
-    document.getElementById("nav-search").style.display = "none";
+    hideFirst(SITE_SELECTORS.amazon.searchBar);
   } else if (
     getURL.toUpperCase().includes("GOOGLE") &&
     getURL.toUpperCase().includes("EARTH")
   ) {
     setTimeout(function () {
-      document.getElementById("search").style.display = "none";
+      hideFirst(SITE_SELECTORS.google.earthSearch);
     }, 4000);
   } else {
     if (
@@ -177,22 +216,75 @@ function subdomain() {
     return true;
   }
 }
+
+function getSearchRoots() {
+  var roots = [document];
+  for (var i = 0; i < roots.length; i++) {
+    var hosts = roots[i].querySelectorAll("*");
+    for (var j = 0; j < hosts.length; j++) {
+      if (hosts[j].shadowRoot) {
+        roots.push(hosts[j].shadowRoot);
+      }
+    }
+  }
+  return roots;
+}
+
+function hideSemanticSearchBars() {
+  var roots = getSearchRoots();
+  for (var i = 0; i < roots.length; i++) {
+    var matches = roots[i].querySelectorAll(
+      'search, form[role="search"], [role="search"], input[type="search"], input[role="searchbox"], input[enterkeyhint="search"]',
+    );
+    for (var j = 0; j < matches.length; j++) {
+      var match = matches[j];
+      var target =
+        match.tagName === "INPUT"
+          ? match.closest('search, form[role="search"], [role="search"]') || match
+          : match;
+      target.style.display = "none";
+    }
+  }
+}
+
+function observeDynamicSearchBars() {
+  var scheduled = false;
+  var observer = new MutationObserver(function () {
+    if (scheduled) {
+      return;
+    }
+    scheduled = true;
+    setTimeout(function () {
+      scheduled = false;
+      getURL();
+    }, 200);
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+}
+
+function hasOpenCv() {
+  return (
+    typeof cv !== "undefined" &&
+    cv &&
+    typeof cv.imread === "function" &&
+    typeof cv.Mat === "function" &&
+    typeof cv.matchTemplate === "function" &&
+    typeof cv.minMaxLoc === "function"
+  );
+}
 // Searches and hides search bars by examining HTML attributes for search-related terms
 function noSearchBar() {
-  var z = 0;
-  getTemplate();
-  getSVG();
-  var nodes = [];
-  values = [];
-  var len = languages.length;
+  hideSemanticSearchBars();
+  if (hasOpenCv()) {
+    getTemplate();
+    getSVG();
+  }
   var dom = document.querySelectorAll("*");
   var xx = document.querySelectorAll("*").length;
   for (var j = 0; j < xx; j++) {
     atts = dom[j].attributes;
     for (var att, i = 0; i < atts.length; i++) {
       att = atts[i];
-      nodes.push(att.nodeName);
-      values.push(att.nodeValue);
       if (dom[j].nodeName !== "BODY" && dom[j].nodeName !== "HTML") {
         if (
           att.nodeName.toUpperCase().includes("SEARCH") &&
@@ -220,20 +312,17 @@ function noSearchBar() {
 }
 // Modified search function for subpages with additional filtering for div elements
 function isSub() {
-  var z = 0;
-  getTemplate();
-  getSVG();
-  var nodes = [];
-  values = [];
-  var len = languages.length;
+  hideSemanticSearchBars();
+  if (hasOpenCv()) {
+    getTemplate();
+    getSVG();
+  }
   var dom = document.querySelectorAll("*");
   var xx = document.querySelectorAll("*").length;
   for (var j = 0; j < xx; j++) {
     atts = dom[j].attributes;
     for (var att, i = 0; i < atts.length; i++) {
       att = atts[i];
-      nodes.push(att.nodeName);
-      values.push(att.nodeValue);
       if (
         dom[j].nodeName !== "BODY" &&
         dom[j].nodeName !== "HTML" &&
@@ -284,7 +373,6 @@ function checkchildnode(j) {
   while (i < length) {
     if (child[i].tagName == "INPUT") {
       div.style.display = "none";
-    } else if (child[i].tagName == "A") {
     }
     i++;
   }
@@ -339,16 +427,22 @@ function getTemplate() {
   };
 }
 // Initializes the extension when page loads and creates reference canvas
-window.onload = function () {
+window.addEventListener("load", function () {
   var creation = document.createElement("canvas");
   creation.id = "createSVG";
   creation.style.display = "none";
   document.body.appendChild(creation);
+  observeDynamicSearchBars();
   getURL();
   setTimeout(getURL, 3000);
-};
+  setTimeout(getURL, 6000);
+  setTimeout(getURL, 10000);
+});
 // Compares SVG canvas with template and hides matching search icons
 function templateMatching(j_X) {
+  if (!hasOpenCv()) {
+    return;
+  }
   let src = cv.imread(`${j_X}`);
   var template = cv.imread("template");
   var dst = new cv.Mat();
