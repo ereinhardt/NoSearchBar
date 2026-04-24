@@ -8,4 +8,4 @@ by Erik Anton Reinhardt, Finn Jakob Reinhardt.<br>
 ---
 
 **Available**:<br>
-https://chromewebstore.google.com/detail/nosearchbar/fjjlanpalmagenpageablaphkfcchado?hl=de&utm_source=ext_sidebar
+https://chromewebstore.google.com/detail/nosearchbar/fjjlanpalmagenpageablaphkfcchado?hl=en
