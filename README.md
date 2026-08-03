@@ -1,4 +1,4 @@
-# NoSearchBar (manifest-v.3.0-4-2026)
+# NoSearchBar (manifest-v.3.1-8-2026)
 
 "NoSearchBar" is a browser extension that removes the searchbar from the (Chromium-based) browser and every website
 

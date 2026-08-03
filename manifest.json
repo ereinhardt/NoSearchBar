@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "NoSearchBar",
-  "version": "3.0",
+  "version": "3.1",
   "description": "Remove SearchBars from the Internet.",
   "author": {
     "name": "Erik Anton Reinhardt",
@@ -13,17 +13,12 @@
   "content_scripts": [{
     "matches": ["<all_urls>"],
     "js": ["script.js"],
-    "run_at": "document_start"
+    "run_at": "document_start",
+    "all_frames": true
   }],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self';"
   },
-  "web_accessible_resources": [
-    {
-      "resources": ["template.png"],
-      "matches": ["<all_urls>"]
-    }
-  ],
   "chrome_settings_overrides": {
     "search_provider": {
       "name": "NoSearchBar",

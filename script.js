@@ -4,8 +4,8 @@ const languages = {
   af: "Soek",
   sq: "kërkimi",
   am: "ፍለጋ",
-  hye: "որոնում",
-  az: "Suche",
+  hy: "որոնում",
+  az: "axtar",
   eu: "bilatu",
   uk: "пошук",
   bn: "অনুসন্ধান",
@@ -40,8 +40,8 @@ const languages = {
   km: "ស្វែងរក",
   rw: "gushakisha",
   ky: "издөө",
-  kw: "검색",
-  hr: "traži",
+  ko: "검색",
+  kw: "hwilas",
   lo: "ຊອກຫາ",
   la: "Quaerere",
   lv: "Meklēt",
@@ -49,13 +49,11 @@ const languages = {
   lb: "sichen",
   mg: "karohy",
   ml: "തിരയുക",
-  id: "cari",
   mt: "tfittxija",
   mi: "rapu",
   mr: "शोध",
   mk: "пребарување",
   mn: "хайх",
-  hi: "खोज",
   nl: "zoeken",
   nb: "Søk",
   pl: "Szukaj",
@@ -63,7 +61,7 @@ const languages = {
   pa: "ਖੋਜ",
   ro: "căutare",
   ru: "поиск",
-  ja: "Sök",
+  sv: "Sök",
   sr: "Претрага",
   st: "batla",
   sn: "tsvaga",
@@ -77,7 +75,7 @@ const languages = {
   tt: "эзләү",
   te: "వెతకండి",
   th: "ค้นหา",
-  ce: "Vyhledávání",
+  cs: "Vyhledávání",
   tr: "arama",
   tk: "gözlemek",
   ug: "ئىزدەش",
@@ -112,18 +110,20 @@ const SITE_SELECTORS = {
   },
 };
 
-function hideFirst(selector) {
-  var element = document.querySelector(selector);
-  if (element) {
-    element.style.display = "none";
+// Makes an element invisible while keeping its space in the layout,
+// so surrounding elements do not shift.
+function hideElement(el) {
+  if (el) {
+    el.style.visibility = "hidden";
   }
 }
 
+function hideFirst(selector) {
+  hideElement(document.querySelector(selector));
+}
+
 function removeFirst(selector) {
-  var element = document.querySelector(selector);
-  if (element && element.parentNode) {
-    element.parentNode.removeChild(element);
-  }
+  hideElement(document.querySelector(selector));
 }
 
 function hideKnownSiteSelectors() {
@@ -136,6 +136,7 @@ function hideKnownSiteSelectors() {
 // Analyzes the website URL and decides which search function to use
 function getURL() {
   hideKnownSiteSelectors();
+  hidePreciseSearchControls();
   var getURL = window.location.href;
   var host = window.location.hostname;
   if (
@@ -240,9 +241,122 @@ function hideSemanticSearchBars() {
       var match = matches[j];
       var target =
         match.tagName === "INPUT"
-          ? match.closest('search, form[role="search"], [role="search"]') || match
+          ? match.closest('search, form[role="search"], [role="search"]') ||
+            match
           : match;
-      target.style.display = "none";
+      hideElement(target);
+    }
+  }
+}
+
+// Returns the search word for the current language plus English as fallback.
+function getLocalSearchWords() {
+  var words = ["search"];
+  var local = getLocal();
+  if (local && words.indexOf(local) === -1) {
+    words.push(local);
+  }
+  return words;
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Whole-word, script-aware match so "research" or "results" never trigger.
+function matchesSearchWord(text) {
+  if (!text) {
+    return false;
+  }
+  var words = getLocalSearchWords();
+  for (var i = 0; i < words.length; i++) {
+    var word = words[i];
+    if (!word) {
+      continue;
+    }
+    try {
+      var re = new RegExp(
+        "(^|[^\\p{L}])" + escapeRegExp(word) + "([^\\p{L}]|$)",
+        "iu",
+      );
+      if (re.test(text)) {
+        return true;
+      }
+    } catch (e) {
+      if (text.toUpperCase().indexOf(word.toUpperCase()) !== -1) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+// Collects the accessible label of a form control from its ARIA/HTML sources.
+function getAccessibleName(el, root) {
+  var parts = [
+    el.getAttribute("aria-label"),
+    el.getAttribute("placeholder"),
+    el.getAttribute("title"),
+    el.getAttribute("name"),
+  ];
+  var labelledby = el.getAttribute("aria-labelledby");
+  if (labelledby) {
+    var ids = labelledby.split(/\s+/);
+    for (var i = 0; i < ids.length; i++) {
+      var scope = root && root.getElementById ? root : document;
+      var ref = scope.getElementById(ids[i]);
+      if (ref) {
+        parts.push(ref.textContent);
+      }
+    }
+  }
+  return parts.join(" ");
+}
+
+// Hides an element as a search bar, preferring its dedicated search container.
+function hideAsSearch(el) {
+  var container =
+    el.closest && el.closest('search, form[role="search"], [role="search"]');
+  hideElement(container || el);
+}
+
+// High-precision detection: only hides elements that are unambiguously
+// search bars, without touching any other content on the page.
+function hidePreciseSearchControls() {
+  var roots = getSearchRoots();
+  for (var r = 0; r < roots.length; r++) {
+    var root = roots[r];
+
+    // 1) Explicit search widgets by ARIA role.
+    var searchboxes = root.querySelectorAll('[role="searchbox"]');
+    for (var s = 0; s < searchboxes.length; s++) {
+      hideAsSearch(searchboxes[s]);
+    }
+
+    // 2) Custom elements whose tag name is clearly a search widget
+    //    (e.g. <site-search>). The hyphen guarantees we never match
+    //    standard HTML elements.
+    var all = root.querySelectorAll("*");
+    for (var a = 0; a < all.length; a++) {
+      var tag = all[a].tagName;
+      if (
+        tag.indexOf("-") !== -1 &&
+        tag.toUpperCase().indexOf("SEARCH") !== -1
+      ) {
+        hideElement(all[a]);
+      }
+    }
+
+    // 3) Text-entry controls explicitly labelled "search" in the user's
+    //    language. Restricted to real inputs so links or unrelated
+    //    buttons are never affected.
+    var controls = root.querySelectorAll(
+      'input:not([type="hidden"]), textarea, [role="combobox"], [contenteditable="true"]',
+    );
+    for (var c = 0; c < controls.length; c++) {
+      if (matchesSearchWord(getAccessibleName(controls[c], root))) {
+        hideAsSearch(controls[c]);
+      }
     }
   }
 }
@@ -262,23 +376,9 @@ function observeDynamicSearchBars() {
   observer.observe(document.body, { childList: true, subtree: true });
 }
 
-function hasOpenCv() {
-  return (
-    typeof cv !== "undefined" &&
-    cv &&
-    typeof cv.imread === "function" &&
-    typeof cv.Mat === "function" &&
-    typeof cv.matchTemplate === "function" &&
-    typeof cv.minMaxLoc === "function"
-  );
-}
 // Searches and hides search bars by examining HTML attributes for search-related terms
 function noSearchBar() {
   hideSemanticSearchBars();
-  if (hasOpenCv()) {
-    getTemplate();
-    getSVG();
-  }
   var dom = document.querySelectorAll("*");
   var xx = document.querySelectorAll("*").length;
   for (var j = 0; j < xx; j++) {
@@ -291,20 +391,20 @@ function noSearchBar() {
           att.nodeName.toUpperCase().includes("WRAPPER") == false &&
           att.nodeName.toUpperCase().includes("RESULTS") == false
         ) {
-          dom[j].style.display = "none";
+          hideElement(dom[j]);
           if (att.nodeName.toUpperCase().includes("OMNIBOX")) {
-            dom[j].style.display = "none";
+            hideElement(dom[j]);
           }
         } else if (
           att.nodeValue.toUpperCase().includes("SEARCH") &&
           att.nodeValue.toUpperCase().includes("RESULT") == false &&
           att.nodeValue.toUpperCase().includes("PRODUCT") == false
         ) {
-          dom[j].style.display = "none";
+          hideElement(dom[j]);
         } else if (
           att.nodeValue.toUpperCase().includes(getLocal().toUpperCase())
         ) {
-          dom[j].style.display = "none";
+          hideElement(dom[j]);
         }
       }
     }
@@ -313,10 +413,6 @@ function noSearchBar() {
 // Modified search function for subpages with additional filtering for div elements
 function isSub() {
   hideSemanticSearchBars();
-  if (hasOpenCv()) {
-    getTemplate();
-    getSVG();
-  }
   var dom = document.querySelectorAll("*");
   var xx = document.querySelectorAll("*").length;
   for (var j = 0; j < xx; j++) {
@@ -339,7 +435,7 @@ function isSub() {
           if (dom[j].nodeName === "DIV") {
             checkchildnode(j);
           } else if (dom[j].nodeName !== "DIV") {
-            dom[j].style.display = "none";
+            hideElement(dom[j]);
           }
         } else if (
           att.nodeValue.toUpperCase().includes("SEARCH") &&
@@ -349,7 +445,7 @@ function isSub() {
           if (dom[j].nodeName === "DIV") {
             checkchildnode(j);
           } else if (dom[j].nodeName !== "DIV") {
-            dom[j].style.display = "none";
+            hideElement(dom[j]);
           }
         } else if (
           att.nodeValue.toUpperCase().includes(getLocal().toUpperCase())
@@ -357,7 +453,7 @@ function isSub() {
           if (dom[j].nodeName === "DIV") {
             checkchildnode(j);
           } else if (dom[j].nodeName !== "DIV") {
-            dom[j].style.display = "none";
+            hideElement(dom[j]);
           }
         }
       }
@@ -372,88 +468,19 @@ function checkchildnode(j) {
   var i = 0;
   while (i < length) {
     if (child[i].tagName == "INPUT") {
-      div.style.display = "none";
+      hideElement(div);
     }
     i++;
   }
 }
-// Processes SVG elements on the page for template matching (limited to first 40)
-function getSVG() {
-  var nn = 0;
-  var length = document.getElementsByTagName("svg").length;
-  for (var i = 0; i < length; i++) {
-    if (nn < 40) {
-      svgbody(i);
-      nn++;
-    }
-  }
-}
-// Converts SVG element to canvas image for template matching
-function svgbody(int_j) {
-  const canvas = document.getElementById("createSVG");
-  var x = canvas.cloneNode();
-  x.id = `${int_j}`;
-  document.body.appendChild(x);
-  const ctx = x.getContext("2d");
-  var svg = document.querySelectorAll("svg")[int_j];
-  let img = new Image();
-  let b64 = "data:image/svg+xml;base64,";
-  let xml = new XMLSerializer().serializeToString(svg);
-  b64 += btoa(unescape(encodeURIComponent(xml)));
-  img.onload = function () {
-    ctx.drawImage(img, 0, 0);
-  };
-  img.src = b64;
-  var zzz = int_j;
-  setTimeout(function () {
-    templateMatching(zzz);
-  }, 3000);
-}
-// Loads the template image into a canvas for comparison
-function getTemplate() {
-  var src_template = chrome.runtime.getURL("template.png");
-  var creation2 = document.createElement("canvas");
-  creation2.id = "template";
-  creation2.style.display = "none";
-  document.body.appendChild(creation2);
-  var context2 = document.querySelector("#template").getContext("2d");
-  var cnv = document.querySelector("#template");
-  base_image = new Image();
-  base_image.src = src_template;
-  base_image.onload = function () {
-    cnv.width = base_image.width;
-    cnv.height = base_image.height;
-    context2.drawImage(base_image, 0, 0);
-  };
-}
-// Initializes the extension when page loads and creates reference canvas
+// Initializes the extension when page loads
 window.addEventListener("load", function () {
-  var creation = document.createElement("canvas");
-  creation.id = "createSVG";
-  creation.style.display = "none";
-  document.body.appendChild(creation);
   observeDynamicSearchBars();
   getURL();
   setTimeout(getURL, 3000);
   setTimeout(getURL, 6000);
   setTimeout(getURL, 10000);
 });
-// Compares SVG canvas with template and hides matching search icons
-function templateMatching(j_X) {
-  if (!hasOpenCv()) {
-    return;
-  }
-  let src = cv.imread(`${j_X}`);
-  var template = cv.imread("template");
-  var dst = new cv.Mat();
-  var mask = new cv.Mat();
-  var res = cv.matchTemplate(template, src, dst, cv.TM_CCOEFF, mask);
-  var result = cv.minMaxLoc(dst, mask);
-  var maxPoint = result.maxLoc;
-  if (result.maxVal == 2933705.25 || result.maxVal == 3094075.25) {
-    document.querySelectorAll("svg")[j_X].style.display = "none";
-  }
-}
 // Gets the localized word for "search" based on browser language
 function getLocal() {
   if (navigator.language != undefined) {
